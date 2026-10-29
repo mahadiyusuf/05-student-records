@@ -201,6 +201,82 @@ tbody tr:hover {
     font-size: 1.05rem;
 }
 
+.form-card {
+    padding: 28px;
+}
+
+.student-form {
+    max-width: 760px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.form-field {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.form-field label {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.optional {
+    color: #64748b;
+    font-weight: 400;
+}
+
+.form-field input,
+.form-field select {
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 11px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #172033;
+    font: inherit;
+}
+
+.form-field input:focus,
+.form-field select:focus {
+    border-color: #2457c5;
+    outline: 3px solid rgb(36 87 197 / 15%);
+}
+
+.form-field [aria-invalid="true"] {
+    border-color: #b42318;
+}
+
+.field-error {
+    color: #a1261c;
+    font-size: 0.85rem;
+}
+
+.form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 26px;
+}
+
+.button-secondary {
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #334155;
+}
+
+.button-secondary:hover {
+    background: #f8fafc;
+    text-decoration: none;
+}
+
 .alert {
     margin-bottom: 20px;
     padding: 13px 16px;
@@ -267,5 +343,14 @@ tbody tr:hover {
     .error-card {
         margin: 28px auto;
         padding: 22px;
+    }
+
+    .form-card {
+        padding: 20px;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
     }
 }

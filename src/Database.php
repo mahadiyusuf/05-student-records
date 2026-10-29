@@ -25,3 +25,14 @@ function db(): PDO
 
     return $connection;
 }
+
+function studentCourseOptions(PDO $connection): array
+{
+    $column = $connection->query("SHOW COLUMNS FROM students LIKE 'course'")->fetch();
+
+    if ($column === false || !preg_match('/^enum\((.*)\)$/i', $column['Type'], $matches)) {
+        throw new RuntimeException('The students.course column must be an ENUM.');
+    }
+
+    return str_getcsv($matches[1], ',', "'", '\\');
+}
