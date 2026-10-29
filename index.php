@@ -1,13 +1,57 @@
 <?php
 
 require_once __DIR__ . '/src/helpers.php';
+require_once __DIR__ . '/src/Database.php';
+
+$q = is_string($_GET['q'] ?? null) ? trim($_GET['q']) : '';
+$requestedCourse = is_string($_GET['course'] ?? null) ? $_GET['course'] : '';
+$requestedPage = filter_var($_GET['page'] ?? 1, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+$page = $requestedPage === false ? 1 : $requestedPage;
+$perPage = 10;
 
 try {
-    require_once __DIR__ . '/src/Database.php';
-    $students = db()
-        ->query('SELECT id, first_name, last_name, email, course, enrolled_on FROM students ORDER BY last_name, first_name')
-        ->fetchAll();
-} catch (PDOException) {
+    $pdo = db();
+    $courses = studentCourseOptions($pdo);
+    $course = in_array($requestedCourse, $courses, true) ? $requestedCourse : '';
+
+    $conditions = [];
+    $parameters = [];
+
+    if ($q !== '') {
+        $conditions[] = '(first_name LIKE :first_name OR last_name LIKE :last_name OR email LIKE :email)';
+        $searchTerm = '%' . $q . '%';
+        $parameters['first_name'] = $searchTerm;
+        $parameters['last_name'] = $searchTerm;
+        $parameters['email'] = $searchTerm;
+    }
+
+    if ($course !== '') {
+        $conditions[] = 'course = :course';
+        $parameters['course'] = $course;
+    }
+
+    $where = $conditions === [] ? '' : ' WHERE ' . implode(' AND ', $conditions);
+    $count = $pdo->prepare('SELECT COUNT(*) FROM students' . $where);
+    $count->execute($parameters);
+    $totalStudents = (int) $count->fetchColumn();
+    $totalPages = max(1, (int) ceil($totalStudents / $perPage));
+    $page = min($page, $totalPages);
+    $offset = ($page - 1) * $perPage;
+
+    $list = $pdo->prepare(
+        'SELECT id, first_name, last_name, email, course, enrolled_on
+         FROM students' . $where . '
+         ORDER BY last_name, first_name, id
+         LIMIT :limit OFFSET :offset'
+    );
+    foreach ($parameters as $name => $value) {
+        $list->bindValue(':' . $name, $value, PDO::PARAM_STR);
+    }
+    $list->bindValue(':limit', $perPage, PDO::PARAM_INT);
+    $list->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $list->execute();
+    $students = $list->fetchAll();
+} catch (PDOException | RuntimeException) {
     http_response_code(503);
     $pageTitle = 'Database unavailable';
     require __DIR__ . '/partials/header.php';
@@ -22,6 +66,20 @@ try {
     exit;
 }
 
+$firstStudent = $totalStudents === 0 ? 0 : $offset + 1;
+$lastStudent = $totalStudents === 0 ? 0 : $offset + count($students);
+$queryParameters = [];
+if ($q !== '') {
+    $queryParameters['q'] = $q;
+}
+if ($course !== '') {
+    $queryParameters['course'] = $course;
+}
+
+$pageUrl = static function (int $pageNumber) use ($queryParameters): string {
+    return 'index.php?' . http_build_query($queryParameters + ['page' => $pageNumber]);
+};
+
 $pageTitle = 'Students';
 require __DIR__ . '/partials/header.php';
 ?>
@@ -33,11 +91,35 @@ require __DIR__ . '/partials/header.php';
     <a class="button" href="create.php">Add student</a>
 </section>
 
+<form class="student-filters" action="index.php" method="get">
+    <div class="filter-field">
+        <label for="q">Search students</label>
+        <input id="q" name="q" type="search" value="<?= e($q) ?>" placeholder="Name or email">
+    </div>
+    <div class="filter-field">
+        <label for="course">Course</label>
+        <select id="course" name="course">
+            <option value="">All courses</option>
+            <?php foreach ($courses as $courseOption): ?>
+                <option value="<?= e($courseOption) ?>" <?= $course === $courseOption ? 'selected' : '' ?>>
+                    <?= e($courseOption) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+    <button class="button" type="submit">Search</button>
+    <?php if ($q !== '' || $course !== ''): ?>
+        <a class="button button-secondary" href="index.php">Clear filters</a>
+    <?php endif; ?>
+</form>
+
+<p class="result-count">Showing <?= e((string) $firstStudent) ?>–<?= e((string) $lastStudent) ?> of <?= e((string) $totalStudents) ?> students</p>
+
 <section class="card" aria-label="Student records">
     <?php if ($students === []): ?>
         <div class="empty-state">
-            <strong>No students yet</strong>
-            Add a student to get started.
+            <strong><?= $totalStudents === 0 ? 'No students found' : 'No students on this page' ?></strong>
+            <?= $q !== '' || $course !== '' ? 'Try changing your search or course filter.' : 'Add a student to get started.' ?>
         </div>
     <?php else: ?>
         <div class="table-wrap">
@@ -82,6 +164,24 @@ require __DIR__ . '/partials/header.php';
         </div>
     <?php endif; ?>
 </section>
+
+<?php if ($totalPages > 1): ?>
+    <nav class="pagination" aria-label="Student pages">
+        <?php if ($page > 1): ?>
+            <a class="page-link" href="<?= e($pageUrl($page - 1)) ?>" rel="prev">Previous</a>
+        <?php endif; ?>
+        <?php for ($pageNumber = 1; $pageNumber <= $totalPages; $pageNumber++): ?>
+            <?php if ($pageNumber === $page): ?>
+                <span class="page-link current-page" aria-current="page"><?= e((string) $pageNumber) ?></span>
+            <?php else: ?>
+                <a class="page-link" href="<?= e($pageUrl($pageNumber)) ?>"><?= e((string) $pageNumber) ?></a>
+            <?php endif; ?>
+        <?php endfor; ?>
+        <?php if ($page < $totalPages): ?>
+            <a class="page-link" href="<?= e($pageUrl($page + 1)) ?>" rel="next">Next</a>
+        <?php endif; ?>
+    </nav>
+<?php endif; ?>
 <?php
 
 require __DIR__ . '/partials/footer.php';
