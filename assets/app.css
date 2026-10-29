@@ -184,8 +184,37 @@ tbody tr:hover {
 }
 
 .action-form {
-    display: inline;
+    display: inline-flex;
     margin: 0;
+}
+
+.detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.detail-card {
+    padding: 28px;
+}
+
+.student-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    margin: 0;
+}
+
+.student-details dt {
+    margin-bottom: 7px;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.student-details dd {
+    margin: 0;
+    font-weight: 600;
+    overflow-wrap: anywhere;
 }
 
 .empty-state {
@@ -347,6 +376,15 @@ tbody tr:hover {
 
     .form-card {
         padding: 20px;
+    }
+
+    .detail-card {
+        padding: 20px;
+    }
+
+    .student-details {
+        grid-template-columns: 1fr;
+        gap: 18px;
     }
 
     .form-grid {
